@@ -1,0 +1,2566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SGLE - Sistema de Gestão de Laboratórios Educacionais | Senai Hub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <!-- jsPDF - Versão estável e compatível -->
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      getDocs, 
+      doc, 
+      updateDoc, 
+      deleteDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { 
+      getStorage, 
+      ref, 
+      uploadBytes, 
+      getDownloadURL,
+      deleteObject 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyASEDSuzTz2VsEnFWuICsiDwRnG29N0L0M",
+      authDomain: "sgle-senai-hub.firebaseapp.com",
+      projectId: "sgle-senai-hub",
+      storageBucket: "sgle-senai-hub.firebasestorage.app",
+      messagingSenderId: "424790404612",
+      appId: "1:424790404612:web:16e14dc8e27a686b15cf51"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    
+    // Initialize Firestore
+    const db = getFirestore(app);
+    
+    // Initialize Storage
+    const storage = getStorage(app);
+    
+    // Exportar para uso global
+    window.firebase = {
+      db,
+      storage,
+      collection,
+      addDoc,
+      getDocs,
+      doc,
+      updateDoc,
+      deleteDoc,
+      onSnapshot,
+      query,
+      orderBy,
+      serverTimestamp,
+      ref,
+      uploadBytes,
+      getDownloadURL,
+      deleteObject
+    };
+    
+    console.log('Firebase inicializado com sucesso!');
+  </script>
+  <style>
+    /* Estilos mantidos (iguais ao original) */
+    :root {
+      --primary: #0d47a1;
+      --primary-dark: #093070;
+      --secondary: #ff6f00;
+      --light: #f5f7fa;
+      --dark: #1e293b;
+      --gray: #64748b;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --shadow: rgba(0, 0, 0, 0.1);
+    }
+
+    .dark-mode {
+      --primary: #3391ff;
+      --primary-dark: #0d47a1;
+      --light: #0f172a;
+      --dark: #f1f5f9;
+      --gray: #94a3b8;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --shadow: rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--light);
+      color: var(--dark);
+      transition: background-color 0.3s, color 0.3s;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 6px var(--shadow);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.4rem;
+    }
+
+    .logo i {
+      color: var(--secondary);
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--secondary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #e65c00;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid white;
+      color: white;
+    }
+
+    .btn-outline:hover {
+      background: white;
+      color: var(--primary);
+    }
+
+    .btn-sm {
+      padding: 0.35rem 0.6rem;
+      font-size: 0.85rem;
+    }
+
+    .btn-edit {
+      background: #dbeafe;
+      color: var(--primary);
+      margin-right: 0.5rem;
+    }
+
+    .btn-edit:hover {
+      background: #bfdbfe;
+    }
+
+    .btn-delete {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .btn-delete:hover {
+      background: #fecaca;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      flex: 1;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.5rem;
+      overflow-x: auto;
+    }
+
+    .tab {
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      border: none;
+      color: var(--gray);
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      transition: all 0.3s;
+    }
+
+    .tab:hover {
+      color: var(--primary);
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom: 3px solid var(--secondary);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    h2 {
+      margin-bottom: 1.25rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--light);
+      color: var(--dark);
+      transition: border-color 0.3s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.1);
+    }
+
+    .dark-mode input,
+    .dark-mode select,
+    .dark-mode textarea {
+      background: #334155;
+      color: var(--dark);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .item-card, .workbench-card, .lab-card {
+      padding-left: 1rem;
+      position: relative;
+      border-left: 4px solid var(--success);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .item-card:hover, .workbench-card:hover, .lab-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px var(--shadow);
+    }
+
+    .item-card.warning, .workbench-card.warning, .lab-card.warning {
+      border-left-color: var(--warning);
+    }
+
+    .item-card.danger, .workbench-card.danger, .lab-card.danger {
+      border-left-color: var(--danger);
+    }
+
+    .item-card h4, .workbench-card h4, .lab-card h4 {
+      margin-bottom: 0.5rem;
+      color: var(--primary);
+    }
+
+    .item-card p, .workbench-card p, .lab-card p {
+      font-size: 0.9rem;
+      color: var(--gray);
+      margin: 0.25rem 0;
+    }
+
+    .item-actions, .workbench-actions, .lab-actions {
+      margin-top: 1rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .workbench-image {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin: 0.75rem 0;
+      background: #ddd;
+    }
+
+    .components-list {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .component-item {
+      padding: 0.5rem 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 0.9rem;
+      position: relative;
+    }
+
+    .component-actions {
+      position: absolute;
+      right: 0;
+      top: 0.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--primary);
+      font-weight: 700;
+      background: rgba(13, 71, 161, 0.05);
+    }
+
+    .dark-mode th {
+      background: rgba(51, 145, 255, 0.1);
+    }
+
+    tr:hover {
+      background-color: rgba(13, 71, 161, 0.05);
+    }
+
+    .dark-mode tr:hover {
+      background-color: rgba(51, 145, 255, 0.1);
+    }
+
+    .status {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .status-cal-valid,
+    .status-available { background: #dcfce7; color: #166534; }
+    .status-cal-expiring,
+    .status-in-use { background: #ffedd5; color: #9a3412; }
+    .status-cal-expired,
+    .status-maintenance { background: #fee2e2; color: #b91c1c; }
+
+    .dark-mode .status-cal-valid,
+    .dark-mode .status-available {
+      background: #064e3b; color: #68d391;
+    }
+    .dark-mode .status-cal-expiring,
+    .dark-mode .status-in-use {
+      background: #7c2d12; color: #fb923c;
+    }
+    .dark-mode .status-cal-expired,
+    .dark-mode .status-maintenance {
+      background: #7f1d1d; color: #f87171;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--gray);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+      margin-top: 3rem;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      background: var(--card-bg);
+      color: var(--dark);
+      box-shadow: 0 4px 12px var(--shadow);
+      border-left: 4px solid var(--success);
+      z-index: 1000;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .notification.warning {
+      border-left-color: var(--warning);
+    }
+
+    .notification.error {
+      border-left-color: var(--danger);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+      color: var(--primary);
+      font-size: 1.5rem;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--gray);
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .close-modal:hover {
+      color: var(--danger);
+    }
+
+    /* NOVOS ESTILOS PARA UPLOAD DE IMAGEM */
+    .image-upload-container {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 1rem;
+      background: rgba(13, 71, 161, 0.05);
+    }
+
+    .dark-mode .image-upload-container {
+      background: rgba(51, 145, 255, 0.05);
+    }
+
+    .image-upload-container:hover {
+      border-color: var(--primary);
+      background: rgba(13, 71, 161, 0.1);
+    }
+
+    .dark-mode .image-upload-container:hover {
+      background: rgba(51, 145, 255, 0.1);
+    }
+
+    .image-upload-icon {
+      font-size: 2.5rem;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .image-upload-text {
+      color: var(--gray);
+      margin-bottom: 0.5rem;
+    }
+
+    .image-upload-hint {
+      color: var(--gray);
+      font-size: 0.8rem;
+    }
+
+    .image-preview-container {
+      position: relative;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .image-preview-container.visible {
+      display: block;
+    }
+
+    .image-preview {
+      width: 100%;
+      max-height: 200px;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .remove-image-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .remove-image-btn:hover {
+      background: #dc2626;
+    }
+
+    .file-input-hidden {
+      display: none;
+    }
+
+    .upload-options {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .upload-option {
+      flex: 1;
+      text-align: center;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .upload-option:hover {
+      border-color: var(--primary);
+      background: rgba(13, 71, 161, 0.05);
+    }
+
+    .upload-option.active {
+      border-color: var(--primary);
+      background: rgba(13, 71, 161, 0.1);
+    }
+
+    .upload-option i {
+      font-size: 1.5rem;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .or-divider {
+      text-align: center;
+      margin: 1rem 0;
+      position: relative;
+    }
+
+    .or-divider span {
+      background: var(--card-bg);
+      padding: 0 1rem;
+      color: var(--gray);
+      font-size: 0.9rem;
+    }
+
+    .or-divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border);
+      z-index: -1;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      .tabs {
+        flex-direction: column;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      header {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .upload-options {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <i class="fas fa-industry"></i>
+      <span>SGLE - Senai Hub</span>
+    </div>
+    <div class="nav-buttons">
+      <button class="btn btn-outline" id="toggleTheme">
+        <i class="fas fa-moon"></i> Dark Mode
+      </button>
+      <button class="btn btn-outline" id="syncBtn" title="Sincronizar com o Firebase">
+        <i class="fas fa-sync-alt"></i> Sincronizar
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button class="tab active" data-tab="schedule">Agendamento</button>
+      <button class="tab" data-tab="equipment">Equipamentos</button>
+      <button class="tab" data-tab="instruments">Instrumentos de Medição</button>
+      <button class="tab" data-tab="workbenches">Bancadas Didáticas</button>
+      <button class="tab" data-tab="labs">Laboratórios</button>
+      <button class="tab" data-tab="reports">Relatórios</button>
+    </div>
+
+    <!-- Agendamento -->
+    <div class="tab-content active" id="schedule">
+      <div class="card">
+        <h2><i class="fas fa-calendar-alt"></i> Agendar Laboratório</h2>
+        <div class="form-group">
+          <label for="labSelect">Laboratório</label>
+          <select id="labSelect">
+            <!-- Laboratórios serão carregados dinamicamente -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="course">Curso / Disciplina</label>
+          <input type="text" id="course" placeholder="Ex: CLP e Automação" />
+        </div>
+        <div class="form-group">
+          <label for="instructor">Professor(a)</label>
+          <input type="text" id="instructor" placeholder="Nome do(a) professor(a)" />
+        </div>
+        <div class="form-group">
+          <label for="dateTime">Data e Hora</label>
+          <input type="datetime-local" id="dateTime" />
+        </div>
+        <div class="form-group">
+          <label for="duration">Duração (horas)</label>
+          <input type="number" id="duration" min="1" max="8" value="2" />
+        </div>
+        <div class="form-group">
+          <label for="students">Número de Alunos</label>
+          <input type="number" id="students" min="1" max="50" value="20" />
+        </div>
+        <button class="btn btn-primary" id="bookBtn">
+          <i class="fas fa-check-circle"></i> Confirmar Agendamento
+        </button>
+      </div>
+
+      <div class="card">
+        <h2><i class="fas fa-list"></i> Próximos Agendamentos</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Laboratório</th>
+              <th>Curso</th>
+              <th>Professor</th>
+              <th>Data/Hora</th>
+              <th>Duração</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleTableBody">
+            <!-- Agendamentos serão carregados aqui -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Equipamentos -->
+    <div class="tab-content" id="equipment">
+      <div class="card">
+        <h2><i class="fas fa-tools"></i> Equipamentos de Laboratório</h2>
+        <button class="btn btn-primary" id="addEquipmentBtn" style="margin-bottom: 1.5rem;">
+          <i class="fas fa-plus"></i> Adicionar Novo Equipamento
+        </button>
+        <div class="grid" id="equipmentGrid"></div>
+      </div>
+    </div>
+
+    <!-- Instrumentos -->
+    <div class="tab-content" id="instruments">
+      <div class="card">
+        <h2><i class="fas fa-ruler-combined"></i> Instrumentos de Medição Elétrica</h2>
+        <button class="btn btn-primary" id="addInstrumentBtn" style="margin-bottom: 1.5rem;">
+          <i class="fas fa-plus"></i> Adicionar Novo Instrumento
+        </button>
+        <div class="grid" id="instrumentsGrid"></div>
+      </div>
+    </div>
+
+    <!-- Bancadas Didáticas -->
+    <div class="tab-content" id="workbenches">
+      <div class="card">
+        <h2><i class="fas fa-table"></i> Bancadas Didáticas</h2>
+        <button class="btn btn-primary" id="addWorkbenchBtn" style="margin-bottom: 1.5rem;">
+          <i class="fas fa-plus"></i> Adicionar Nova Bancada
+        </button>
+        <div class="grid" id="workbenchesGrid"></div>
+      </div>
+    </div>
+
+    <!-- Laboratórios -->
+    <div class="tab-content" id="labs">
+      <div class="card">
+        <h2><i class="fas fa-flask"></i> Gerenciar Laboratórios</h2>
+        <button class="btn btn-primary" id="addLabBtn" style="margin-bottom: 1.5rem;">
+          <i class="fas fa-plus"></i> Adicionar Novo Laboratório
+        </button>
+        <div class="grid" id="labsGrid"></div>
+      </div>
+    </div>
+
+    <!-- Relatórios -->
+    <div class="tab-content" id="reports">
+      <div class="card">
+        <h2><i class="fas fa-file-alt"></i> Modelo de Relatório Técnico</h2>
+        <div class="form-group">
+          <label for="reportTitle">Título da Prática</label>
+          <input type="text" id="reportTitle" placeholder="Ex: Controle de Nível com CLP" value="Relatório de Prática Laboratorial" />
+        </div>
+        <div class="form-group">
+          <label for="reportLab">Laboratório</label>
+          <select id="reportLab">
+            <!-- Laboratórios serão carregados dinamicamente -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="reportInstructor">Professor Responsável</label>
+          <input type="text" id="reportInstructor" placeholder="Nome do professor" />
+        </div>
+        <div class="form-group">
+          <label for="reportDate">Data da Prática</label>
+          <input type="date" id="reportDate" />
+        </div>
+        <div class="form-group">
+          <label for="reportContent">Descrição / Procedimento</label>
+          <textarea id="reportContent" rows="6" placeholder="Descreva os passos, medições, observações...">1. Montagem do circuito conforme esquema.\n2. Alimentação com 24Vcc.\n3. Teste de funcionamento do sensor.</textarea>
+        </div>
+        <div class="form-group">
+          <label for="reportConclusion">Conclusão</label>
+          <textarea id="reportConclusion" rows="4" placeholder="Resultados e aprendizados">A prática foi concluída com sucesso. O sistema respondeu conforme esperado, validando os conceitos teóricos estudados.</textarea>
+        </div>
+        <div class="form-group">
+          <label for="reportEquipment">Equipamentos Utilizados</label>
+          <select id="reportEquipment" multiple style="height: 100px;">
+            <!-- Opções serão carregadas dinamicamente -->
+          </select>
+        </div>
+        <button class="btn btn-primary" id="generateReport">
+          <i class="fas fa-file-pdf"></i> Gerar Relatório em PDF
+        </button>
+        <button class="btn btn-outline" id="exportJson">
+          <i class="fas fa-download"></i> Exportar Dados (JSON)
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal para formulários -->
+  <div class="modal" id="equipmentModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-tools"></i> <span id="modalEquipmentTitle">Adicionar Equipamento</span></h3>
+        <button class="close-modal" id="closeEquipmentModal">&times;</button>
+      </div>
+      <input type="hidden" id="editEquipId" value="">
+      <div class="form-group">
+        <label for="equipName">Nome do Equipamento *</label>
+        <input type="text" id="equipName" placeholder="Ex: CLP Siemens S7-1200" required>
+      </div>
+      <div class="form-group">
+        <label for="equipSerial">Número de Série *</label>
+        <input type="text" id="equipSerial" placeholder="Ex: SIEM-8842" required>
+      </div>
+      <div class="form-group">
+        <label for="equipBrand">Marca</label>
+        <input type="text" id="equipBrand" placeholder="Ex: Siemens, Allen-Bradley">
+      </div>
+      <div class="form-group">
+        <label for="equipDescription">Descrição / Função</label>
+        <textarea id="equipDescription" rows="2" placeholder="Ex: Controlador lógico programável para automação industrial"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="equipLab">Laboratório *</label>
+        <select id="equipLab" required>
+          <!-- Laboratórios serão carregados dinamicamente -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="equipCalDate">Data de Calibração/Manutenção</label>
+        <input type="date" id="equipCalDate">
+      </div>
+      <div class="form-group">
+        <label for="equipStatus">Status</label>
+        <select id="equipStatus">
+          <option value="available">Disponível</option>
+          <option value="in-use">Em uso</option>
+          <option value="maintenance">Em manutenção</option>
+        </select>
+      </div>
+      <div style="display: flex; gap: 1rem;">
+        <button class="btn btn-primary" id="saveEquipmentBtn">
+          <i class="fas fa-save"></i> Salvar
+        </button>
+        <button class="btn btn-outline" id="cancelEquipmentBtn">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="instrumentModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-ruler-combined"></i> <span id="modalInstrumentTitle">Adicionar Instrumento</span></h3>
+        <button class="close-modal" id="closeInstrumentModal">&times;</button>
+      </div>
+      <input type="hidden" id="editInstId" value="">
+      <div class="form-group">
+        <label for="instName">Nome do Instrumento *</label>
+        <input type="text" id="instName" placeholder="Ex: Multímetro Fluke 87V" required>
+      </div>
+      <div class="form-group">
+        <label for="instSerial">Número de Série *</label>
+        <input type="text" id="instSerial" placeholder="Ex: FLK-87V-2023" required>
+      </div>
+      <div class="form-group">
+        <label for="instBrand">Marca</label>
+        <input type="text" id="instBrand" placeholder="Ex: Fluke, Minipa, Yokogawa">
+      </div>
+      <div class="form-group">
+        <label for="instLab">Laboratório *</label>
+        <select id="instLab" required>
+          <!-- Laboratórios serão carregados dinamicamente -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="instRange">Faixa de Medição</label>
+        <input type="text" id="instRange" placeholder="Ex: 0–1000V AC/DC">
+      </div>
+      <div class="form-group">
+        <label for="instClass">Classe / Categoria de Segurança</label>
+        <input type="text" id="instClass" placeholder="Ex: CAT III 1000V">
+      </div>
+      <div class="form-group">
+        <label for="instCalDate">Data de Calibração *</label>
+        <input type="date" id="instCalDate" required>
+      </div>
+      <div class="form-group">
+        <label for="instStatus">Status de Uso</label>
+        <select id="instStatus">
+          <option value="available">Disponível</option>
+          <option value="in-use">Em uso</option>
+          <option value="maintenance">Em manutenção</option>
+        </select>
+      </div>
+      <div style="display: flex; gap: 1rem;">
+        <button class="btn btn-primary" id="saveInstrumentBtn">
+          <i class="fas fa-save"></i> Salvar
+        </button>
+        <button class="btn btn-outline" id="cancelInstrumentBtn">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Bancadas Didáticas -->
+  <div class="modal" id="workbenchModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-table"></i> <span id="modalWorkbenchTitle">Adicionar Bancada</span></h3>
+        <button class="close-modal" id="closeWorkbenchModal">&times;</button>
+      </div>
+      <input type="hidden" id="editWbId" value="">
+      <input type="hidden" id="wbImageUrlFirebase" value="">
+      
+      <div class="form-group">
+        <label for="wbName">Nome da Bancada *</label>
+        <input type="text" id="wbName" placeholder="Ex: Bancada de Comandos Elétricos" required>
+      </div>
+      <div class="form-group">
+        <label for="wbDescription">Descrição</label>
+        <textarea id="wbDescription" rows="2" placeholder="Finalidade e uso pedagógico"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="wbLab">Laboratório *</label>
+        <select id="wbLab" required>
+          <!-- Laboratórios serão carregados dinamicamente -->
+        </select>
+      </div>
+      
+      <!-- SEÇÃO DE IMAGEM COM UPLOAD -->
+      <div class="form-group">
+        <label>Imagem da Bancada</label>
+        
+        <div class="upload-options">
+          <div class="upload-option active" id="uploadOptionLocal">
+            <i class="fas fa-upload"></i>
+            <div>Anexar do computador</div>
+          </div>
+          <div class="upload-option" id="uploadOptionUrl">
+            <i class="fas fa-link"></i>
+            <div>Usar URL</div>
+          </div>
+        </div>
+        
+        <!-- Upload local -->
+        <div id="uploadLocalSection">
+          <div class="image-upload-container" id="imageUploadArea">
+            <div class="image-upload-icon">
+              <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="image-upload-text">Clique para selecionar uma imagem</div>
+            <div class="image-upload-hint">Formatos: JPG, PNG, GIF (Máx: 5MB)</div>
+            <input type="file" id="imageFileInput" class="file-input-hidden" accept="image/*">
+          </div>
+          
+          <div class="image-preview-container" id="imagePreviewContainer">
+            <img id="imagePreview" class="image-preview" alt="Pré-visualização da imagem">
+            <button type="button" id="removeImageBtn" class="remove-image-btn">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- URL -->
+        <div id="uploadUrlSection" style="display: none;">
+          <div class="form-group">
+            <input type="url" id="wbImageUrl" placeholder="https://exemplo.com/imagem.jpg" style="margin-top: 0.5rem;">
+          </div>
+        </div>
+      </div>
+      
+      <h3 style="margin: 1.5rem 0 1rem; color: var(--primary);">Componentes da Bancada</h3>
+      <div id="componentsList"></div>
+      <button class="btn btn-outline" id="addComponentBtn" style="margin-bottom: 1rem;">
+        <i class="fas fa-plus-circle"></i> Adicionar Componente
+      </button>
+      <div style="display: flex; gap: 1rem;">
+        <button class="btn btn-primary" id="saveWorkbenchBtn">
+          <i class="fas fa-save"></i> Salvar Bancada
+        </button>
+        <button class="btn btn-outline" id="cancelWorkbenchBtn">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Laboratórios -->
+  <div class="modal" id="labModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-flask"></i> <span id="modalLabTitle">Adicionar Laboratório</span></h3>
+        <button class="close-modal" id="closeLabModal">&times;</button>
+      </div>
+      <input type="hidden" id="editLabId" value="">
+      
+      <div class="form-group">
+        <label for="labName">Nome do Laboratório *</label>
+        <input type="text" id="labName" placeholder="Ex: Lab de Automação Industrial" required>
+      </div>
+      <div class="form-group">
+        <label for="labCode">Código do Laboratório</label>
+        <input type="text" id="labCode" placeholder="Ex: LAB-AUTO-001">
+      </div>
+      <div class="form-group">
+        <label for="labDescription">Descrição</label>
+        <textarea id="labDescription" rows="3" placeholder="Descreva as finalidades e equipamentos principais do laboratório"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="labCapacity">Capacidade (número de alunos)</label>
+        <input type="number" id="labCapacity" min="1" max="100" value="20">
+      </div>
+      <div class="form-group">
+        <label for="labResponsible">Responsável Técnico</label>
+        <input type="text" id="labResponsible" placeholder="Nome do técnico responsável">
+      </div>
+      <div class="form-group">
+        <label for="labStatus">Status</label>
+        <select id="labStatus">
+          <option value="active">Ativo</option>
+          <option value="maintenance">Em manutenção</option>
+          <option value="inactive">Inativo</option>
+        </select>
+      </div>
+      <div style="display: flex; gap: 1rem;">
+        <button class="btn btn-primary" id="saveLabBtn">
+          <i class="fas fa-save"></i> Salvar Laboratório
+        </button>
+        <button class="btn btn-outline" id="cancelLabBtn">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2025 Senai Hub - Área de Energia | Sistema de Gestão de Laboratórios Educacionais (SGLE)</p>
+    <p>Versão 1.0.0 | Sincronizado com Firebase</p>
+  </footer>
+
+  <script>
+    // Inicialização do jsPDF
+    const { jsPDF } = window.jspdf;
+
+    // Dados armazenados localmente (para performance)
+    let laboratories = [];
+    let equipments = [];
+    let instruments = [];
+    let workbenches = [];
+    let schedules = [];
+
+    // Firebase collections
+    const collections = {
+      laboratories: 'laboratories',
+      equipments: 'equipments',
+      instruments: 'instruments',
+      workbenches: 'workbenches',
+      schedules: 'schedules'
+    };
+
+    // Variáveis para upload de imagem
+    let currentImageFile = null;
+    let currentImageBase64 = null;
+
+    // Funções auxiliares
+    function getCalStatus(calDateStr) {
+      if (!calDateStr) return { class: 'status-cal-expiring', text: 'Sem data' };
+      const calDate = new Date(calDateStr);
+      const today = new Date();
+      const diffTime = calDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) return { class: 'status-cal-expired', text: 'Calibração vencida' };
+      if (diffDays <= 30) return { class: 'status-cal-expiring', text: `Vence em ${diffDays} dias` };
+      return { class: 'status-cal-valid', text: 'Calibrado' };
+    }
+
+    function getStatusClass(status, type = 'usage') {
+      if (type === 'calibration') {
+        if (status === 'expired') return { class: 'status-cal-expired', text: 'Vencida' };
+        if (status === 'expiring') return { class: 'status-cal-expiring', text: 'Vencendo' };
+        return { class: 'status-cal-valid', text: 'Válida' };
+      } else {
+        if (status === 'in-use' || status === 'active') return { class: 'status-in-use', text: 'Em uso' };
+        if (status === 'maintenance') return { class: 'status-maintenance', text: 'Manutenção' };
+        if (status === 'scheduled') return { class: 'status-available', text: 'Agendado' };
+        if (status === 'inactive') return { class: 'status-cal-expired', text: 'Inativo' };
+        return { class: 'status-available', text: 'Disponível' };
+      }
+    }
+
+    function showNotification(message, type = 'success') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle'}"></i>
+        ${message}
+      `;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 3000);
+    }
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    // Função para obter nome do laboratório pelo ID
+    function getLabNameById(labId) {
+      const lab = laboratories.find(l => l.id === labId);
+      return lab ? lab.nome : 'Laboratório não encontrado';
+    }
+
+    // Função para carregar laboratórios nos selects
+    function loadLabsIntoSelects() {
+      const labSelects = [
+        'labSelect', 'equipLab', 'instLab', 'wbLab', 'reportLab'
+      ];
+      
+      labSelects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select) {
+          select.innerHTML = '';
+          
+          laboratories.forEach(lab => {
+            const option = document.createElement('option');
+            option.value = lab.id;
+            option.textContent = lab.nome;
+            select.appendChild(option);
+          });
+          
+          // Adicionar opção padrão se não houver laboratórios
+          if (laboratories.length === 0) {
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Nenhum laboratório cadastrado';
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            select.appendChild(defaultOption);
+          }
+        }
+      });
+    }
+
+    // ==================== FIREBASE FUNCTIONS ====================
+    
+    // Função para carregar todos os dados do Firebase
+    async function loadAllDataFromFirebase() {
+      try {
+        showNotification('🔄 Carregando dados do Firebase...', '');
+        
+        // Carregar laboratórios
+        const labsSnapshot = await firebase.getDocs(firebase.collection(firebase.db, collections.laboratories));
+        laboratories = labsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Carregar equipamentos
+        const equipSnapshot = await firebase.getDocs(firebase.collection(firebase.db, collections.equipments));
+        equipments = equipSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Carregar instrumentos
+        const instSnapshot = await firebase.getDocs(firebase.collection(firebase.db, collections.instruments));
+        instruments = instSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Carregar bancadas
+        const wbSnapshot = await firebase.getDocs(firebase.collection(firebase.db, collections.workbenches));
+        workbenches = wbSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Carregar agendamentos
+        const schedSnapshot = await firebase.getDocs(firebase.collection(firebase.db, collections.schedules));
+        schedules = schedSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Atualizar UI
+        loadLabsIntoSelects();
+        renderEquipments();
+        renderInstruments();
+        renderWorkbenches();
+        renderLabs();
+        renderSchedules();
+        renderReportEquipmentOptions();
+        
+        showNotification('✅ Dados carregados do Firebase com sucesso!', 'success');
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        showNotification('❌ Erro ao carregar dados do Firebase', 'error');
+      }
+    }
+
+    // Função para adicionar item ao Firebase
+    async function addToFirebase(collectionName, data) {
+      try {
+        const docRef = await firebase.addDoc(firebase.collection(firebase.db, collectionName), {
+          ...data,
+          createdAt: firebase.serverTimestamp(),
+          updatedAt: firebase.serverTimestamp()
+        });
+        return docRef.id;
+      } catch (error) {
+        console.error('Erro ao adicionar:', error);
+        throw error;
+      }
+    }
+
+    // Função para atualizar item no Firebase
+    async function updateInFirebase(collectionName, docId, data) {
+      try {
+        const docRef = firebase.doc(firebase.db, collectionName, docId);
+        await firebase.updateDoc(docRef, {
+          ...data,
+          updatedAt: firebase.serverTimestamp()
+        });
+      } catch (error) {
+        console.error('Erro ao atualizar:', error);
+        throw error;
+      }
+    }
+
+    // Função para deletar item do Firebase
+    async function deleteFromFirebase(collectionName, docId) {
+      try {
+        const docRef = firebase.doc(firebase.db, collectionName, docId);
+        await firebase.deleteDoc(docRef);
+      } catch (error) {
+        console.error('Erro ao deletar:', error);
+        throw error;
+      }
+    }
+
+    // Função para fazer upload de imagem para Firebase Storage
+    async function uploadImageToFirebase(file, folder = 'workbenches') {
+      try {
+        if (!file) return null;
+        
+        const timestamp = Date.now();
+        const fileName = `${folder}/${timestamp}_${file.name}`;
+        const storageRef = firebase.ref(firebase.storage, fileName);
+        
+        // Fazer upload do arquivo
+        await firebase.uploadBytes(storageRef, file);
+        
+        // Obter URL de download
+        const downloadURL = await firebase.getDownloadURL(storageRef);
+        
+        return downloadURL;
+      } catch (error) {
+        console.error('Erro ao fazer upload da imagem:', error);
+        throw error;
+      }
+    }
+
+    // Função para deletar imagem do Firebase Storage
+    async function deleteImageFromFirebase(imageUrl) {
+      try {
+        if (!imageUrl || !imageUrl.includes('firebasestorage')) return;
+        
+        // Extrair o caminho da URL
+        const urlParts = imageUrl.split('/');
+        const pathIndex = urlParts.indexOf('o') + 1;
+        const encodedPath = urlParts[pathIndex];
+        const filePath = decodeURIComponent(encodedPath.split('?')[0]);
+        
+        const storageRef = firebase.ref(firebase.storage, filePath);
+        await firebase.deleteObject(storageRef);
+      } catch (error) {
+        console.error('Erro ao deletar imagem:', error);
+        // Não lançar erro para não interromper o fluxo principal
+      }
+    }
+
+    // Função para inicializar upload de imagem
+    function initializeImageUpload() {
+      const imageUploadArea = document.getElementById('imageUploadArea');
+      const imageFileInput = document.getElementById('imageFileInput');
+      const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+      const imagePreview = document.getElementById('imagePreview');
+      const removeImageBtn = document.getElementById('removeImageBtn');
+      const uploadOptionLocal = document.getElementById('uploadOptionLocal');
+      const uploadOptionUrl = document.getElementById('uploadOptionUrl');
+      const uploadLocalSection = document.getElementById('uploadLocalSection');
+      const uploadUrlSection = document.getElementById('uploadUrlSection');
+      const wbImageUrl = document.getElementById('wbImageUrl');
+      const wbImageUrlFirebase = document.getElementById('wbImageUrlFirebase');
+      
+      // Alternar entre upload local e URL
+      uploadOptionLocal.addEventListener('click', () => {
+        uploadOptionLocal.classList.add('active');
+        uploadOptionUrl.classList.remove('active');
+        uploadLocalSection.style.display = 'block';
+        uploadUrlSection.style.display = 'none';
+        wbImageUrl.value = '';
+        wbImageUrlFirebase.value = '';
+        currentImageFile = null;
+        currentImageBase64 = null;
+      });
+      
+      uploadOptionUrl.addEventListener('click', () => {
+        uploadOptionUrl.classList.add('active');
+        uploadOptionLocal.classList.remove('active');
+        uploadLocalSection.style.display = 'none';
+        uploadUrlSection.style.display = 'block';
+        currentImageFile = null;
+        currentImageBase64 = null;
+        imagePreviewContainer.classList.remove('visible');
+      });
+      
+      // Abrir seletor de arquivo ao clicar na área
+      imageUploadArea.addEventListener('click', () => {
+        imageFileInput.click();
+      });
+      
+      // Arrastar e soltar
+      imageUploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        imageUploadArea.style.borderColor = 'var(--primary)';
+        imageUploadArea.style.background = 'rgba(13, 71, 161, 0.1)';
+      });
+      
+      imageUploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        imageUploadArea.style.borderColor = 'var(--border)';
+        imageUploadArea.style.background = 'rgba(13, 71, 161, 0.05)';
+      });
+      
+      imageUploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        imageUploadArea.style.borderColor = 'var(--border)';
+        imageUploadArea.style.background = 'rgba(13, 71, 161, 0.05)';
+        
+        if (e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          handleImageFile(file);
+        }
+      });
+      
+      // Lidar com seleção de arquivo
+      imageFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          const file = e.target.files[0];
+          handleImageFile(file);
+        }
+      });
+      
+      // Remover imagem
+      removeImageBtn.addEventListener('click', () => {
+        clearImage();
+      });
+      
+      // Quando URL for alterada
+      wbImageUrl.addEventListener('input', () => {
+        if (wbImageUrl.value.trim()) {
+          currentImageFile = null;
+          currentImageBase64 = null;
+          wbImageUrlFirebase.value = '';
+        }
+      });
+      
+      function handleImageFile(file) {
+        // Verificar se é uma imagem
+        if (!file.type.match('image.*')) {
+          showNotification('⚠️ Por favor, selecione apenas arquivos de imagem.', 'error');
+          return;
+        }
+        
+        // Verificar tamanho do arquivo (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          showNotification('⚠️ A imagem deve ter no máximo 5MB.', 'error');
+          return;
+        }
+        
+        // Armazenar arquivo para upload posterior
+        currentImageFile = file;
+        
+        // Ler para pré-visualização
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          currentImageBase64 = e.target.result;
+          imagePreview.src = currentImageBase64;
+          imagePreviewContainer.classList.add('visible');
+          showNotification('✅ Imagem carregada para pré-visualização!', 'success');
+        };
+        
+        reader.onerror = () => {
+          showNotification('❌ Erro ao carregar a imagem.', 'error');
+        };
+        
+        reader.readAsDataURL(file);
+      }
+      
+      function clearImage() {
+        currentImageFile = null;
+        currentImageBase64 = null;
+        imagePreview.src = '';
+        imagePreviewContainer.classList.remove('visible');
+        imageFileInput.value = '';
+        wbImageUrl.value = '';
+        wbImageUrlFirebase.value = '';
+      }
+      
+      return {
+        getCurrentImageFile: () => currentImageFile,
+        getCurrentImageBase64: () => currentImageBase64,
+        clearImage: clearImage,
+        setImage: (imageUrl) => {
+          if (imageUrl) {
+            imagePreview.src = imageUrl;
+            imagePreviewContainer.classList.add('visible');
+            wbImageUrlFirebase.value = imageUrl;
+          }
+        },
+        getImageUrl: () => wbImageUrl.value.trim(),
+        getImageUrlFirebase: () => wbImageUrlFirebase.value.trim()
+      };
+    }
+
+    // Inicializar upload de imagem
+    const imageUpload = initializeImageUpload();
+
+    // ==================== RENDER FUNCTIONS ====================
+    
+    function renderEquipments() {
+      const container = document.getElementById('equipmentGrid');
+      container.innerHTML = '';
+      
+      if (equipments.length === 0) {
+        container.innerHTML = `
+          <div class="card" style="text-align: center; padding: 2rem;">
+            <i class="fas fa-tools" style="font-size: 3rem; color: var(--gray); margin-bottom: 1rem;"></i>
+            <p>Nenhum equipamento cadastrado.</p>
+            <button class="btn btn-primary" onclick="openModal('equipment')">
+              <i class="fas fa-plus"></i> Adicionar Primeiro Equipamento
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      equipments.forEach((equip) => {
+        const calStatus = getCalStatus(equip.calDate);
+        const usageStatus = getStatusClass(equip.status);
+        const isDanger = calStatus.class === 'status-cal-expired';
+        const isWarning = calStatus.class === 'status-cal-expiring';
+        const labName = getLabNameById(equip.labId);
+        
+        const card = document.createElement('div');
+        card.className = `card item-card ${isDanger ? 'danger' : isWarning ? 'warning' : ''}`;
+        card.innerHTML = `
+          <h4>${equip.name}</h4>
+          <p><i class="fas fa-hashtag"></i> <strong>S/N:</strong> ${equip.serial}</p>
+          <p><i class="fas fa-tag"></i> <strong>Marca:</strong> ${equip.brand}</p>
+          <p><i class="fas fa-info-circle"></i> <strong>Descrição:</strong> ${equip.description || '—'}</p>
+          <p><i class="fas fa-calendar-check"></i> <strong>Calibração:</strong> ${equip.calDate ? formatDate(equip.calDate) : 'Não informado'}</p>
+          <p><i class="fas fa-flask"></i> <strong>Laboratório:</strong> ${labName}</p>
+          <div style="margin-top: 0.5rem;">
+            <span class="status ${calStatus.class}">${calStatus.text}</span>
+            <span class="status ${usageStatus.class}" style="margin-left: 0.5rem;">${usageStatus.text}</span>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-sm btn-edit" onclick="editEquipment('${equip.id}')">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+            <button class="btn btn-sm btn-delete" onclick="deleteEquipment('${equip.id}')">
+              <i class="fas fa-trash"></i> Excluir
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderInstruments() {
+      const container = document.getElementById('instrumentsGrid');
+      container.innerHTML = '';
+      
+      if (instruments.length === 0) {
+        container.innerHTML = `
+          <div class="card" style="text-align: center; padding: 2rem;">
+            <i class="fas fa-ruler-combined" style="font-size: 3rem; color: var(--gray); margin-bottom: 1rem;"></i>
+            <p>Nenhum instrumento cadastrado.</p>
+            <button class="btn btn-primary" onclick="openModal('instrument')">
+              <i class="fas fa-plus"></i> Adicionar Primeiro Instrumento
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      instruments.forEach((inst) => {
+        const calStatus = getCalStatus(inst.calDate);
+        const usageStatus = getStatusClass(inst.status);
+        const isDanger = calStatus.class === 'status-cal-expired';
+        const isWarning = calStatus.class === 'status-cal-expiring';
+        const labName = getLabNameById(inst.labId);
+        
+        const card = document.createElement('div');
+        card.className = `card item-card ${isDanger ? 'danger' : isWarning ? 'warning' : ''}`;
+        card.innerHTML = `
+          <h4>${inst.name}</h4>
+          <p><i class="fas fa-hashtag"></i> <strong>S/N:</strong> ${inst.serial}</p>
+          <p><i class="fas fa-tag"></i> <strong>Marca:</strong> ${inst.brand}</p>
+          <p><i class="fas fa-sliders-h"></i> <strong>Faixa:</strong> ${inst.range || '—'}</p>
+          <p><i class="fas fa-shield-alt"></i> <strong>Classe:</strong> ${inst.class || '—'}</p>
+          <p><i class="fas fa-calendar-check"></i> <strong>Calibração:</strong> ${inst.calDate ? formatDate(inst.calDate) : 'Não informado'}</p>
+          <p><i class="fas fa-flask"></i> <strong>Laboratório:</strong> ${labName}</p>
+          <div style="margin-top: 0.5rem;">
+            <span class="status ${calStatus.class}">${calStatus.text}</span>
+            <span class="status ${usageStatus.class}" style="margin-left: 0.5rem;">${usageStatus.text}</span>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-sm btn-edit" onclick="editInstrument('${inst.id}')">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+            <button class="btn btn-sm btn-delete" onclick="deleteInstrument('${inst.id}')">
+              <i class="fas fa-trash"></i> Excluir
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderWorkbenches() {
+      const container = document.getElementById('workbenchesGrid');
+      container.innerHTML = '';
+      
+      if (workbenches.length === 0) {
+        container.innerHTML = `
+          <div class="card" style="text-align: center; padding: 2rem;">
+            <i class="fas fa-table" style="font-size: 3rem; color: var(--gray); margin-bottom: 1rem;"></i>
+            <p>Nenhuma bancada cadastrada.</p>
+            <button class="btn btn-primary" onclick="openModal('workbench')">
+              <i class="fas fa-plus"></i> Adicionar Primeira Bancada
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      workbenches.forEach((wb) => {
+        const card = document.createElement('div');
+        card.className = 'card workbench-card';
+        const labName = getLabNameById(wb.labId);
+        
+        // Determinar fonte da imagem
+        let imgSrc = wb.imagemUrl || 'https://placehold.co/600x400/e2e8f0/94a3b8?text=Sem+Imagem';
+        
+        card.innerHTML = `
+          <h4>${wb.nome}</h4>
+          <p><i class="fas fa-info-circle"></i> <strong>Descrição:</strong> ${wb.descricao || '—'}</p>
+          <p><i class="fas fa-flask"></i> <strong>Laboratório:</strong> ${labName}</p>
+          <img src="${imgSrc}" class="workbench-image" onerror="this.src='https://placehold.co/600x400/e2e8f0/94a3b8?text=Imagem+Indisponível'">
+          <div class="components-list">
+            <strong><i class="fas fa-cogs"></i> Componentes (${wb.componentes ? wb.componentes.length : 0}):</strong>
+            <div style="margin-top: 0.5rem;">
+              ${wb.componentes ? wb.componentes.map(comp => `
+                <div class="component-item">
+                  <strong>${comp.nome}</strong> (Qtd: ${comp.quantidade})<br>
+                  <small>${comp.descricao} • ${comp.fabricante} • Patrimônio: ${comp.patrimonio}</small>
+                </div>
+              `).join('') : '<p>Nenhum componente cadastrado</p>'}
+            </div>
+          </div>
+          <div class="workbench-actions">
+            <button class="btn btn-sm btn-edit" onclick="editWorkbench('${wb.id}')">
+              <i class="fas fa-edit"></i> Editar Bancada
+            </button>
+            <button class="btn btn-sm btn-delete" onclick="deleteWorkbench('${wb.id}', '${wb.imagemUrl}')">
+              <i class="fas fa-trash"></i> Excluir
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderLabs() {
+      const container = document.getElementById('labsGrid');
+      container.innerHTML = '';
+      
+      if (laboratories.length === 0) {
+        container.innerHTML = `
+          <div class="card" style="text-align: center; padding: 2rem;">
+            <i class="fas fa-flask" style="font-size: 3rem; color: var(--gray); margin-bottom: 1rem;"></i>
+            <p>Nenhum laboratório cadastrado.</p>
+            <button class="btn btn-primary" onclick="openModal('lab')">
+              <i class="fas fa-plus"></i> Adicionar Primeiro Laboratório
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      laboratories.forEach((lab) => {
+        const status = getStatusClass(lab.status);
+        const equipCount = equipments.filter(e => e.labId === lab.id).length;
+        const instCount = instruments.filter(i => i.labId === lab.id).length;
+        const wbCount = workbenches.filter(w => w.labId === lab.id).length;
+        
+        const card = document.createElement('div');
+        card.className = `card lab-card`;
+        card.innerHTML = `
+          <h4>${lab.nome}</h4>
+          <p><i class="fas fa-hashtag"></i> <strong>Código:</strong> ${lab.codigo || '—'}</p>
+          <p><i class="fas fa-info-circle"></i> <strong>Descrição:</strong> ${lab.descricao || '—'}</p>
+          <p><i class="fas fa-users"></i> <strong>Capacidade:</strong> ${lab.capacidade} alunos</p>
+          <p><i class="fas fa-user-tie"></i> <strong>Responsável:</strong> ${lab.responsavel || '—'}</p>
+          <p><i class="fas fa-chart-bar"></i> <strong>Inventário:</strong> ${equipCount} equipamentos, ${instCount} instrumentos, ${wbCount} bancadas</p>
+          <div style="margin-top: 0.5rem;">
+            <span class="status ${status.class}">${status.text}</span>
+          </div>
+          <div class="lab-actions">
+            <button class="btn btn-sm btn-edit" onclick="editLab('${lab.id}')">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+            <button class="btn btn-sm btn-delete" onclick="deleteLab('${lab.id}')">
+              <i class="fas fa-trash"></i> Excluir
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderSchedules() {
+      const container = document.getElementById('scheduleTableBody');
+      container.innerHTML = '';
+      
+      schedules.forEach((schedule) => {
+        const status = getStatusClass(schedule.status);
+        const labName = getLabNameById(schedule.labId);
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${labName}</td>
+          <td>${schedule.curso}</td>
+          <td>${schedule.professor}</td>
+          <td>${formatDate(schedule.dataHora)}</td>
+          <td>${schedule.duracao}h</td>
+          <td><span class="status ${status.class}">${status.text}</span></td>
+          <td>
+            <button class="btn btn-sm btn-edit" onclick="editSchedule('${schedule.id}')">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-delete" onclick="deleteSchedule('${schedule.id}')">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function renderReportEquipmentOptions() {
+      const select = document.getElementById('reportEquipment');
+      select.innerHTML = '';
+      
+      equipments.forEach(equip => {
+        const labName = getLabNameById(equip.labId);
+        const option = document.createElement('option');
+        option.value = equip.id;
+        option.textContent = `${equip.name} (${labName})`;
+        select.appendChild(option);
+      });
+      
+      instruments.forEach(inst => {
+        const labName = getLabNameById(inst.labId);
+        const option = document.createElement('option');
+        option.value = `inst-${inst.id}`;
+        option.textContent = `${inst.name} (${labName})`;
+        select.appendChild(option);
+      });
+    }
+
+    // ==================== MODAL FUNCTIONS ====================
+    
+    async function openModal(type, docId = null) {
+      const modalId = `${type}Modal`;
+      const modal = document.getElementById(modalId);
+      modal.classList.add('active');
+      
+      if (type === 'equipment') {
+        const title = document.getElementById('modalEquipmentTitle');
+        if (docId) {
+          const equip = equipments.find(e => e.id === docId);
+          if (equip) {
+            title.textContent = 'Editar Equipamento';
+            document.getElementById('editEquipId').value = docId;
+            document.getElementById('equipName').value = equip.name;
+            document.getElementById('equipSerial').value = equip.serial;
+            document.getElementById('equipBrand').value = equip.brand || '';
+            document.getElementById('equipDescription').value = equip.description || '';
+            document.getElementById('equipCalDate').value = equip.calDate || '';
+            document.getElementById('equipStatus').value = equip.status;
+            document.getElementById('equipLab').value = equip.labId;
+          }
+        } else {
+          title.textContent = 'Adicionar Equipamento';
+          document.getElementById('editEquipId').value = '';
+          ['equipName','equipSerial','equipBrand','equipDescription','equipCalDate'].forEach(id => 
+            document.getElementById(id).value = ''
+          );
+          document.getElementById('equipStatus').value = 'available';
+          if (laboratories.length > 0) {
+            document.getElementById('equipLab').value = laboratories[0].id;
+          }
+        }
+      } else if (type === 'instrument') {
+        const title = document.getElementById('modalInstrumentTitle');
+        if (docId) {
+          const inst = instruments.find(i => i.id === docId);
+          if (inst) {
+            title.textContent = 'Editar Instrumento';
+            document.getElementById('editInstId').value = docId;
+            document.getElementById('instName').value = inst.name;
+            document.getElementById('instSerial').value = inst.serial;
+            document.getElementById('instBrand').value = inst.brand || '';
+            document.getElementById('instRange').value = inst.range || '';
+            document.getElementById('instClass').value = inst.class || '';
+            document.getElementById('instCalDate').value = inst.calDate;
+            document.getElementById('instStatus').value = inst.status;
+            document.getElementById('instLab').value = inst.labId;
+          }
+        } else {
+          title.textContent = 'Adicionar Instrumento';
+          document.getElementById('editInstId').value = '';
+          ['instName','instSerial','instBrand','instRange','instClass','instCalDate'].forEach(id => 
+            document.getElementById(id).value = ''
+          );
+          document.getElementById('instStatus').value = 'available';
+          if (laboratories.length > 0) {
+            document.getElementById('instLab').value = laboratories[0].id;
+          }
+        }
+      } else if (type === 'workbench') {
+        const title = document.getElementById('modalWorkbenchTitle');
+        const componentsContainer = document.getElementById('componentsList');
+        componentsContainer.innerHTML = '';
+        
+        // Resetar upload de imagem
+        imageUpload.clearImage();
+        document.getElementById('uploadOptionLocal').click();
+        document.getElementById('wbImageUrl').value = '';
+        document.getElementById('wbImageUrlFirebase').value = '';
+        
+        if (docId) {
+          const wb = workbenches.find(w => w.id === docId);
+          if (wb) {
+            title.textContent = 'Editar Bancada';
+            document.getElementById('editWbId').value = docId;
+            document.getElementById('wbName').value = wb.nome;
+            document.getElementById('wbDescription').value = wb.descricao || '';
+            document.getElementById('wbLab').value = wb.labId;
+            
+            // Configurar imagem
+            if (wb.imagemUrl) {
+              if (wb.imagemUrl.includes('firebasestorage')) {
+                // Imagem do Firebase
+                imageUpload.setImage(wb.imagemUrl);
+                document.getElementById('wbImageUrlFirebase').value = wb.imagemUrl;
+              } else {
+                // URL externa
+                document.getElementById('uploadOptionUrl').click();
+                document.getElementById('wbImageUrl').value = wb.imagemUrl || '';
+              }
+            }
+            
+            // Adicionar componentes
+            if (wb.componentes && wb.componentes.length > 0) {
+              wb.componentes.forEach(comp => {
+                addComponentToForm(comp);
+              });
+            }
+          }
+        } else {
+          title.textContent = 'Adicionar Bancada';
+          document.getElementById('editWbId').value = '';
+          document.getElementById('wbName').value = '';
+          document.getElementById('wbDescription').value = '';
+          document.getElementById('wbImageUrl').value = '';
+          if (laboratories.length > 0) {
+            document.getElementById('wbLab').value = laboratories[0].id;
+          }
+        }
+      } else if (type === 'lab') {
+        const title = document.getElementById('modalLabTitle');
+        if (docId) {
+          const lab = laboratories.find(l => l.id === docId);
+          if (lab) {
+            title.textContent = 'Editar Laboratório';
+            document.getElementById('editLabId').value = docId;
+            document.getElementById('labName').value = lab.nome;
+            document.getElementById('labCode').value = lab.codigo || '';
+            document.getElementById('labDescription').value = lab.descricao || '';
+            document.getElementById('labCapacity').value = lab.capacidade || 20;
+            document.getElementById('labResponsible').value = lab.responsavel || '';
+            document.getElementById('labStatus').value = lab.status;
+          }
+        } else {
+          title.textContent = 'Adicionar Laboratório';
+          document.getElementById('editLabId').value = '';
+          ['labName','labCode','labDescription','labResponsible'].forEach(id => 
+            document.getElementById(id).value = ''
+          );
+          document.getElementById('labCapacity').value = 20;
+          document.getElementById('labStatus').value = 'active';
+        }
+      }
+    }
+
+    function closeModal(type) {
+      const modalId = `${type}Modal`;
+      document.getElementById(modalId).classList.remove('active');
+    }
+
+    function addComponentToForm(comp = null) {
+      const container = document.getElementById('componentsList');
+      const compDiv = document.createElement('div');
+      compDiv.className = 'component-form';
+      compDiv.style.marginBottom = '1rem';
+      compDiv.style.padding = '1rem';
+      compDiv.style.border = '1px solid var(--border)';
+      compDiv.style.borderRadius = '8px';
+      
+      compDiv.innerHTML = `
+        <div class="form-group">
+          <label>Nome do Componente</label>
+          <input type="text" class="comp-name" value="${comp ? comp.nome : ''}" placeholder="Ex: Contator Siemens" required>
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <input type="text" class="comp-desc" value="${comp ? comp.descricao : ''}" placeholder="Ex: 220V AC, 3 pólos">
+        </div>
+        <div class="form-group">
+          <label>Quantidade</label>
+          <input type="number" class="comp-qty" value="${comp ? comp.quantidade : 1}" min="1">
+        </div>
+        <div class="form-group">
+          <label>Fabricante</label>
+          <input type="text" class="comp-manuf" value="${comp ? comp.fabricante : ''}" placeholder="Ex: Siemens">
+        </div>
+        <div class="form-group">
+          <label>Nº de Patrimônio</label>
+          <input type="text" class="comp-pat" value="${comp ? comp.patrimonio : ''}" placeholder="Ex: PAT-8821">
+        </div>
+        <button type="button" class="btn btn-sm btn-delete remove-comp" style="width: 100%;">
+          <i class="fas fa-trash"></i> Remover Componente
+        </button>
+      `;
+      
+      container.appendChild(compDiv);
+      compDiv.querySelector('.remove-comp').addEventListener('click', () => {
+        compDiv.remove();
+      });
+    }
+
+    // ==================== CRUD FUNCTIONS ====================
+    
+    async function editEquipment(docId) {
+      openModal('equipment', docId);
+    }
+
+    async function editInstrument(docId) {
+      openModal('instrument', docId);
+    }
+
+    async function editWorkbench(docId) {
+      openModal('workbench', docId);
+    }
+
+    async function editLab(docId) {
+      openModal('lab', docId);
+    }
+
+    function editSchedule(docId) {
+      // Implementar edição de agendamento
+      alert('Funcionalidade de edição de agendamento será implementada em breve!');
+    }
+
+    async function deleteEquipment(docId) {
+      if (confirm('Tem certeza que deseja excluir este equipamento?')) {
+        try {
+          await deleteFromFirebase(collections.equipments, docId);
+          equipments = equipments.filter(e => e.id !== docId);
+          renderEquipments();
+          renderReportEquipmentOptions();
+          renderLabs();
+          showNotification('✅ Equipamento excluído com sucesso!', 'success');
+        } catch (error) {
+          showNotification('❌ Erro ao excluir equipamento', 'error');
+        }
+      }
+    }
+
+    async function deleteInstrument(docId) {
+      if (confirm('Tem certeza que deseja excluir este instrumento?')) {
+        try {
+          await deleteFromFirebase(collections.instruments, docId);
+          instruments = instruments.filter(i => i.id !== docId);
+          renderInstruments();
+          renderReportEquipmentOptions();
+          renderLabs();
+          showNotification('✅ Instrumento excluído com sucesso!', 'success');
+        } catch (error) {
+          showNotification('❌ Erro ao excluir instrumento', 'error');
+        }
+      }
+    }
+
+    async function deleteWorkbench(docId, imageUrl = null) {
+      if (confirm('Tem certeza que deseja excluir esta bancada?')) {
+        try {
+          // Deletar imagem do Storage se existir
+          if (imageUrl && imageUrl.includes('firebasestorage')) {
+            await deleteImageFromFirebase(imageUrl);
+          }
+          
+          // Deletar documento do Firestore
+          await deleteFromFirebase(collections.workbenches, docId);
+          
+          // Atualizar localmente
+          workbenches = workbenches.filter(w => w.id !== docId);
+          renderWorkbenches();
+          renderLabs();
+          showNotification('✅ Bancada excluída com sucesso!', 'success');
+        } catch (error) {
+          showNotification('❌ Erro ao excluir bancada', 'error');
+        }
+      }
+    }
+
+    async function deleteLab(docId) {
+      const lab = laboratories.find(l => l.id === docId);
+      if (!lab) return;
+      
+      // Verificar se existem equipamentos, instrumentos ou bancadas associados
+      const equipCount = equipments.filter(e => e.labId === docId).length;
+      const instCount = instruments.filter(i => i.labId === docId).length;
+      const wbCount = workbenches.filter(w => w.labId === docId).length;
+      
+      if (equipCount > 0 || instCount > 0 || wbCount > 0) {
+        showNotification(`⚠️ Não é possível excluir este laboratório. Existem ${equipCount} equipamentos, ${instCount} instrumentos e ${wbCount} bancadas associados.`, 'error');
+        return;
+      }
+      
+      if (confirm(`Tem certeza que deseja excluir o laboratório "${lab.nome}"?`)) {
+        try {
+          await deleteFromFirebase(collections.laboratories, docId);
+          laboratories = laboratories.filter(l => l.id !== docId);
+          renderLabs();
+          loadLabsIntoSelects();
+          showNotification('✅ Laboratório excluído com sucesso!', 'success');
+        } catch (error) {
+          showNotification('❌ Erro ao excluir laboratório', 'error');
+        }
+      }
+    }
+
+    async function deleteSchedule(docId) {
+      if (confirm('Tem certeza que deseja cancelar este agendamento?')) {
+        try {
+          await deleteFromFirebase(collections.schedules, docId);
+          schedules = schedules.filter(s => s.id !== docId);
+          renderSchedules();
+          showNotification('✅ Agendamento cancelado com sucesso!', 'success');
+        } catch (error) {
+          showNotification('❌ Erro ao cancelar agendamento', 'error');
+        }
+      }
+    }
+
+    // ==================== EVENT LISTENERS ====================
+    
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Esperar Firebase carregar
+      setTimeout(async () => {
+        if (window.firebase) {
+          // Carregar dados do Firebase
+          await loadAllDataFromFirebase();
+        } else {
+          showNotification('⚠️ Firebase não carregado corretamente', 'warning');
+        }
+      }, 1000);
+      
+      // Configurar data atual nos formulários
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('dateTime').min = new Date().toISOString().slice(0, 16);
+      document.getElementById('reportDate').value = today;
+      document.getElementById('instCalDate').value = today;
+      document.getElementById('equipCalDate').value = today;
+      
+      // Botões de adicionar
+      document.getElementById('addEquipmentBtn').addEventListener('click', () => openModal('equipment'));
+      document.getElementById('addInstrumentBtn').addEventListener('click', () => openModal('instrument'));
+      document.getElementById('addWorkbenchBtn').addEventListener('click', () => openModal('workbench'));
+      document.getElementById('addLabBtn').addEventListener('click', () => openModal('lab'));
+      
+      // Botões de fechar modal
+      document.getElementById('closeEquipmentModal').addEventListener('click', () => closeModal('equipment'));
+      document.getElementById('closeInstrumentModal').addEventListener('click', () => closeModal('instrument'));
+      document.getElementById('closeWorkbenchModal').addEventListener('click', () => closeModal('workbench'));
+      document.getElementById('closeLabModal').addEventListener('click', () => closeModal('lab'));
+      
+      // Botões de cancelar
+      document.getElementById('cancelEquipmentBtn').addEventListener('click', () => closeModal('equipment'));
+      document.getElementById('cancelInstrumentBtn').addEventListener('click', () => closeModal('instrument'));
+      document.getElementById('cancelWorkbenchBtn').addEventListener('click', () => closeModal('workbench'));
+      document.getElementById('cancelLabBtn').addEventListener('click', () => closeModal('lab'));
+      
+      // Botão adicionar componente
+      document.getElementById('addComponentBtn').addEventListener('click', () => addComponentToForm());
+      
+      // Botão de sincronização
+      document.getElementById('syncBtn').addEventListener('click', async () => {
+        document.getElementById('syncBtn').classList.add('loading');
+        document.getElementById('syncBtn').innerHTML = '<div class="spinner"></div> Sincronizando...';
+        
+        await loadAllDataFromFirebase();
+        
+        document.getElementById('syncBtn').classList.remove('loading');
+        document.getElementById('syncBtn').innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar';
+      });
+      
+      // Salvar equipamento
+      document.getElementById('saveEquipmentBtn').addEventListener('click', async () => {
+        const name = document.getElementById('equipName').value.trim();
+        const serial = document.getElementById('equipSerial').value.trim();
+        const labId = document.getElementById('equipLab').value;
+        const docId = document.getElementById('editEquipId').value;
+        
+        if (!name || !serial || !labId) {
+          showNotification('⚠️ Nome, número de série e laboratório são obrigatórios!', 'error');
+          return;
+        }
+        
+        const equipData = {
+          name,
+          serial,
+          brand: document.getElementById('equipBrand').value.trim(),
+          description: document.getElementById('equipDescription').value.trim(),
+          calDate: document.getElementById('equipCalDate').value,
+          status: document.getElementById('equipStatus').value,
+          labId: labId
+        };
+        
+        try {
+          if (docId) {
+            // Atualizar
+            await updateInFirebase(collections.equipments, docId, equipData);
+            
+            // Atualizar localmente
+            const index = equipments.findIndex(e => e.id === docId);
+            if (index !== -1) {
+              equipments[index] = { ...equipments[index], ...equipData };
+            }
+            
+            showNotification('✅ Equipamento atualizado com sucesso!', 'success');
+          } else {
+            // Adicionar novo
+            const newDocId = await addToFirebase(collections.equipments, equipData);
+            
+            // Adicionar localmente
+            equipments.push({
+              id: newDocId,
+              ...equipData
+            });
+            
+            showNotification('✅ Novo equipamento adicionado com sucesso!', 'success');
+          }
+          
+          renderEquipments();
+          renderReportEquipmentOptions();
+          renderLabs();
+          closeModal('equipment');
+        } catch (error) {
+          showNotification('❌ Erro ao salvar equipamento', 'error');
+        }
+      });
+      
+      // Salvar instrumento
+      document.getElementById('saveInstrumentBtn').addEventListener('click', async () => {
+        const name = document.getElementById('instName').value.trim();
+        const serial = document.getElementById('instSerial').value.trim();
+        const calDate = document.getElementById('instCalDate').value;
+        const labId = document.getElementById('instLab').value;
+        const docId = document.getElementById('editInstId').value;
+        
+        if (!name || !serial || !calDate || !labId) {
+          showNotification('⚠️ Nome, número de série, data de calibração e laboratório são obrigatórios!', 'error');
+          return;
+        }
+        
+        const instData = {
+          name,
+          serial,
+          brand: document.getElementById('instBrand').value.trim(),
+          range: document.getElementById('instRange').value.trim(),
+          class: document.getElementById('instClass').value.trim(),
+          calDate,
+          status: document.getElementById('instStatus').value,
+          labId: labId
+        };
+        
+        try {
+          if (docId) {
+            // Atualizar
+            await updateInFirebase(collections.instruments, docId, instData);
+            
+            // Atualizar localmente
+            const index = instruments.findIndex(i => i.id === docId);
+            if (index !== -1) {
+              instruments[index] = { ...instruments[index], ...instData };
+            }
+            
+            showNotification('✅ Instrumento atualizado com sucesso!', 'success');
+          } else {
+            // Adicionar novo
+            const newDocId = await addToFirebase(collections.instruments, instData);
+            
+            // Adicionar localmente
+            instruments.push({
+              id: newDocId,
+              ...instData
+            });
+            
+            showNotification('✅ Novo instrumento adicionado com sucesso!', 'success');
+          }
+          
+          renderInstruments();
+          renderReportEquipmentOptions();
+          renderLabs();
+          closeModal('instrument');
+        } catch (error) {
+          showNotification('❌ Erro ao salvar instrumento', 'error');
+        }
+      });
+      
+      // Salvar bancada
+      document.getElementById('saveWorkbenchBtn').addEventListener('click', async () => {
+        const nome = document.getElementById('wbName').value.trim();
+        const labId = document.getElementById('wbLab').value;
+        const docId = document.getElementById('editWbId').value;
+        const existingImageUrl = document.getElementById('wbImageUrlFirebase').value;
+        
+        if (!nome || !labId) {
+          showNotification('⚠️ Nome da bancada e laboratório são obrigatórios!', 'error');
+          return;
+        }
+        
+        // Coletar componentes
+        const componentElements = document.querySelectorAll('#componentsList .component-form');
+        const componentes = [];
+        
+        componentElements.forEach(el => {
+          const comp = {
+            nome: el.querySelector('.comp-name').value.trim(),
+            descricao: el.querySelector('.comp-desc').value.trim(),
+            quantidade: parseInt(el.querySelector('.comp-qty').value) || 1,
+            fabricante: el.querySelector('.comp-manuf').value.trim(),
+            patrimonio: el.querySelector('.comp-pat').value.trim(),
+          };
+          
+          if (comp.nome) componentes.push(comp);
+        });
+        
+        // Determinar URL da imagem
+        let imagemUrl = '';
+        const imageFile = imageUpload.getCurrentImageFile();
+        const externalUrl = imageUpload.getImageUrl();
+        
+        try {
+          // Upload da imagem se houver arquivo
+          if (imageFile) {
+            imagemUrl = await uploadImageToFirebase(imageFile, 'workbenches');
+            // Deletar imagem anterior se existir
+            if (existingImageUrl) {
+              await deleteImageFromFirebase(existingImageUrl);
+            }
+          } else if (externalUrl) {
+            imagemUrl = externalUrl;
+          } else {
+            imagemUrl = existingImageUrl; // Manter a imagem existente
+          }
+          
+          const wbData = {
+            nome,
+            descricao: document.getElementById('wbDescription').value.trim(),
+            labId: labId,
+            imagemUrl: imagemUrl || null,
+            componentes: componentes.length > 0 ? componentes : []
+          };
+          
+          if (docId) {
+            // Atualizar
+            await updateInFirebase(collections.workbenches, docId, wbData);
+            
+            // Atualizar localmente
+            const index = workbenches.findIndex(w => w.id === docId);
+            if (index !== -1) {
+              workbenches[index] = { ...workbenches[index], ...wbData };
+            }
+            
+            showNotification('✅ Bancada atualizada com sucesso!', 'success');
+          } else {
+            // Adicionar novo
+            const newDocId = await addToFirebase(collections.workbenches, wbData);
+            
+            // Adicionar localmente
+            workbenches.push({
+              id: newDocId,
+              ...wbData
+            });
+            
+            showNotification('✅ Nova bancada adicionada com sucesso!', 'success');
+          }
+          
+          renderWorkbenches();
+          renderLabs();
+          closeModal('workbench');
+        } catch (error) {
+          console.error('Erro ao salvar bancada:', error);
+          showNotification('❌ Erro ao salvar bancada', 'error');
+        }
+      });
+      
+      // Salvar laboratório
+      document.getElementById('saveLabBtn').addEventListener('click', async () => {
+        const nome = document.getElementById('labName').value.trim();
+        const docId = document.getElementById('editLabId').value;
+        
+        if (!nome) {
+          showNotification('⚠️ Nome do laboratório é obrigatório!', 'error');
+          return;
+        }
+        
+        const labData = {
+          nome,
+          codigo: document.getElementById('labCode').value.trim(),
+          descricao: document.getElementById('labDescription').value.trim(),
+          capacidade: parseInt(document.getElementById('labCapacity').value) || 20,
+          responsavel: document.getElementById('labResponsible').value.trim(),
+          status: document.getElementById('labStatus').value
+        };
+        
+        try {
+          if (docId) {
+            // Atualizar
+            await updateInFirebase(collections.laboratories, docId, labData);
+            
+            // Atualizar localmente
+            const index = laboratories.findIndex(l => l.id === docId);
+            if (index !== -1) {
+              laboratories[index] = { ...laboratories[index], ...labData };
+            }
+            
+            showNotification('✅ Laboratório atualizado com sucesso!', 'success');
+          } else {
+            // Adicionar novo
+            const newDocId = await addToFirebase(collections.laboratories, labData);
+            
+            // Adicionar localmente
+            laboratories.push({
+              id: newDocId,
+              ...labData
+            });
+            
+            showNotification('✅ Novo laboratório adicionado com sucesso!', 'success');
+          }
+          
+          renderLabs();
+          loadLabsIntoSelects();
+          closeModal('lab');
+        } catch (error) {
+          showNotification('❌ Erro ao salvar laboratório', 'error');
+        }
+      });
+      
+      // Agendamento
+      document.getElementById('bookBtn').addEventListener('click', async () => {
+        const labId = document.getElementById('labSelect').value;
+        const course = document.getElementById('course').value.trim();
+        const instructor = document.getElementById('instructor').value.trim();
+        const dateTime = document.getElementById('dateTime').value;
+        const duration = document.getElementById('duration').value;
+        const students = document.getElementById('students').value;
+        
+        if (!labId || !course || !instructor || !dateTime) {
+          showNotification('⚠️ Preencha todos os campos obrigatórios!', 'error');
+          return;
+        }
+        
+        const scheduleData = {
+          labId: labId,
+          curso: course,
+          professor: instructor,
+          dataHora: dateTime,
+          duracao: parseInt(duration),
+          alunos: parseInt(students),
+          status: 'scheduled'
+        };
+        
+        try {
+          const newDocId = await addToFirebase(collections.schedules, scheduleData);
+          
+          // Adicionar localmente
+          schedules.push({
+            id: newDocId,
+            ...scheduleData
+          });
+          
+          renderSchedules();
+          
+          // Limpar formulário
+          document.getElementById('course').value = '';
+          document.getElementById('instructor').value = '';
+          document.getElementById('dateTime').value = '';
+          document.getElementById('students').value = '20';
+          
+          showNotification('✅ Agendamento confirmado com sucesso!', 'success');
+        } catch (error) {
+          showNotification('❌ Erro ao confirmar agendamento', 'error');
+        }
+      });
+      
+      // Dark Mode
+      document.getElementById('toggleTheme').addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const icon = document.getElementById('toggleTheme').querySelector('i');
+        const button = document.getElementById('toggleTheme');
+        
+        if (document.body.classList.contains('dark-mode')) {
+          icon.className = 'fas fa-sun';
+          button.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+        } else {
+          icon.className = 'fas fa-moon';
+          button.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+        }
+      });
+      
+      // Tabs
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById(tab.dataset.tab).classList.add('active');
+        });
+      });
+      
+      // Gerar PDF
+      document.getElementById('generateReport').addEventListener('click', () => {
+        const title = document.getElementById('reportTitle').value || 'Relatório Técnico';
+        const labId = document.getElementById('reportLab').value;
+        const labName = getLabNameById(labId);
+        const instructor = document.getElementById('reportInstructor').value;
+        const date = document.getElementById('reportDate').value;
+        const content = document.getElementById('reportContent').value;
+        const conclusion = document.getElementById('reportConclusion').value;
+        const selectedEquipment = Array.from(document.getElementById('reportEquipment').selectedOptions)
+          .map(option => option.textContent);
+        
+        const doc = new jsPDF();
+        
+        // Cabeçalho Senai
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(13, 71, 161);
+        doc.text('SENAI Hub - Área de Energia', 14, 20);
+        doc.setFontSize(14);
+        doc.text('Sistema de Gestão de Laboratórios Educacionais (SGLE)', 14, 27);
+        doc.setDrawColor(13, 71, 161);
+        doc.line(14, 32, 196, 32);
+        
+        // Título
+        doc.setFontSize(18);
+        doc.setTextColor(0, 0, 0);
+        doc.text(title, 14, 45);
+        
+        // Informações básicas
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        let y = 55;
+        
+        doc.text(`Laboratório: ${labName}`, 14, y);
+        y += 7;
+        doc.text(`Professor: ${instructor}`, 14, y);
+        y += 7;
+        doc.text(`Data: ${date}`, 14, y);
+        y += 10;
+        
+        // Descrição/Procedimento
+        if (content) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Descrição / Procedimento:', 14, y);
+          y += 7;
+          doc.setFont('helvetica', 'normal');
+          const contentLines = doc.splitTextToSize(content, 180);
+          doc.text(contentLines, 14, y);
+          y += contentLines.length * 6 + 10;
+        }
+        
+        // Equipamentos utilizados
+        if (selectedEquipment.length > 0) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Equipamentos Utilizados:', 14, y);
+          y += 7;
+          doc.setFont('helvetica', 'normal');
+          selectedEquipment.forEach((equip, index) => {
+            doc.text(`${index + 1}. ${equip}`, 14, y);
+            y += 6;
+          });
+          y += 10;
+        }
+        
+        // Conclusão
+        if (conclusion) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Conclusão:', 14, y);
+          y += 7;
+          doc.setFont('helvetica', 'normal');
+          const conclusionLines = doc.splitTextToSize(conclusion, 180);
+          doc.text(conclusionLines, 14, y);
+          y += conclusionLines.length * 6 + 10;
+        }
+        
+        // Rodapé
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('pt-BR') + ' às ' + now.toLocaleTimeString('pt-BR', { hour12: false });
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Gerado em: ${dateStr}`, 14, 285);
+        doc.text(`Página 1 de 1`, 180, 285);
+        
+        doc.save(`relatorio_${title.replace(/\s+/g, '_')}.pdf`);
+        showNotification('✅ Relatório gerado com sucesso!', 'success');
+      });
+      
+      // Exportar dados como JSON
+      document.getElementById('exportJson').addEventListener('click', () => {
+        const data = {
+          laboratories,
+          equipments,
+          instruments,
+          workbenches,
+          schedules,
+          exportDate: new Date().toISOString()
+        };
+        
+        const dataStr = JSON.stringify(data, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        
+        const exportFileDefaultName = `sgle_dados_${new Date().toISOString().split('T')[0]}.json`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+        
+        showNotification('✅ Dados exportados com sucesso!', 'success');
+      });
+    });
+  </script>
+</body>
+</html>
